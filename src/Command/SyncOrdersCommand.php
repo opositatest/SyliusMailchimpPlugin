@@ -48,7 +48,9 @@ class SyncOrdersCommand extends BaseSyncCommand
             ->setName('odiseo:mailchimp:sync-orders')
             ->setDescription('Synchronize the orders to Mailchimp.')
             ->addOption('create-only', 'c', InputOption::VALUE_NONE, 'With this option the existing carts will be not updated.')
+            ->addArgument('created-since', null, 'With this option only the carts createdn since the given date will be updated')
         ;
+
     }
 
     /**
@@ -69,10 +71,18 @@ class SyncOrdersCommand extends BaseSyncCommand
     protected function registerOrders(InputInterface $input)
     {
         $createOnly = $input->getOption('create-only');
-
-        $orders = $this->orderRepository->createQueryBuilder('o')
+        $createdSince = $input->getArgument('created-since');
+        $queryBuilder = $this->orderRepository->createQueryBuilder('o')
             ->andWhere('o.paymentState = :paymentState')
-            ->setParameter('paymentState', OrderPaymentStates::STATE_PAID)
+            ->setParameter('paymentState', OrderPaymentStates::STATE_PAID);
+
+        if($createdSince != null){
+            $createdSince = (new \DateTime($createdSince))->format('Y-m-d H:i:s');
+            $queryBuilder->andWhere('o.createdAt >= :createdSince')
+                ->setParameter('createdSince', $createdSince);
+        }
+
+        $orders = $queryBuilder
             ->getQuery()
             ->getResult()
         ;
